@@ -1,0 +1,460 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
+    <http:request-config name="HTTP_Request_Configuration" host="localhost" port="8888" doc:name="HTTP Request Configuration"/>
+    <flow name="paxourneyIdFlow" initialState="stopped">
+        <poll doc:name="Poll">
+            <fixed-frequency-scheduler frequency="1" timeUnit="MINUTES"/>
+            <logger message="paxJourneyID testing" level="INFO" doc:name="Logger"/>
+        </poll>
+        <dw:transform-message doc:name="Transform Message" >
+            <dw:input-variable doc:sample="sample_data\json_107.json" variableName="originalPayload"/>
+            <dw:input-variable doc:sample="D:\ProjectRelatedWork\DCS\CurrencyExchange\InboundPropertiesVar.json" mimeType="application/json" variableName="inboundPropertiesVar"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+
+%function paxJourneyList() (flowVars.originalPayload.paxServices.paxReference.paxJourneyID map ((pax,index) -> {
+								list:p('http.dcs.paxJourney.path') ++ pax ++ "?dep=" ++ flowVars.inboundPropertiesVar.dep
+	
+							}))
+							
+%function list() [{"list":"test"}, {"list":"test"}, {"list":"test"}, {"list":"test"}]
+---
+list().list]]></dw:set-payload>
+        </dw:transform-message>
+        <foreach collection="#[message.payload]" doc:name="For Each">
+            <logger message="inside for each of payment balance pax journey id call:::::::: printing path ::::::::::::::: #[message.payloadAs(java.lang.String)]" level="INFO" doc:name="Logger"/>
+            <dw:transform-message doc:name="Transform Message">
+                <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{ 
+	test:"success",
+	paxJourneyID:"12345"
+	
+}]]></dw:set-payload>
+            </dw:transform-message>
+
+            <logger message="111111111 --------&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt; #[flowVars.paxJourneyList]" level="INFO" doc:name="Logger"/>
+
+        </foreach>
+        <dw:transform-message doc:name="Transform Message" metadata:id="c699a573-30b3-4f8b-a69f-5d06dcc7f7f9">
+            <dw:input-variable doc:sample="sample_data\string.dwl" mimeType="application/java" variableName="paxJourneyList"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+flowVars.paxJourneyList]]></dw:set-payload>
+        </dw:transform-message>
+        <json:object-to-json-transformer mimeType="application/json" doc:name="Object to JSON"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload.paxDetails]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="Printing final Pax journey list :::::::::::::: #[message.payload]" level="INFO" doc:name="Logger"/>
+
+
+    </flow>
+    <flow name="testingFlow" initialState="stopped">
+        <poll doc:name="Poll">
+            <logger level="INFO" doc:name="Logger"/>
+        </poll>
+        <dw:transform-message doc:name="Copy_of_Transform Message">
+            <dw:input-variable doc:sample="sample_data\json_107.json" variableName="originalPayload"/>
+            <dw:input-variable doc:sample="D:\ProjectRelatedWork\DCS\CurrencyExchange\InboundPropertiesVar.json" mimeType="application/json" variableName="inboundPropertiesVar"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+
+%function paxJourneyList() (flowVars.originalPayload.paxServices.paxReference.paxJourneyID map ((pax,index) -> {
+								list:p('http.dcs.paxJourney.path') ++ pax ++ "?dep=" ++ flowVars.inboundPropertiesVar.dep
+	
+							}))
+							
+%function list() [{"list":"test"}, {"list":"test"}, {"list":"test"}, {"list":"test"}]
+---
+list().list]]></dw:set-payload>
+        </dw:transform-message>
+        <collection-splitter doc:name="Collection Splitter"/>
+        <collection-aggregator failOnTimeout="true" doc:name="Collection Aggregator"/>
+    </flow>
+    <flow name="testingFlow1" initialState="stopped">
+        <dw:transform-message doc:name="Transform Message" metadata:id="ac5e225d-aacd-4488-b31b-13ca48a927d1">
+            <dw:input-payload doc:sample="C:\Users\m1005645\Desktop\mobiledevice\payload.json" mimeType="application/json"/>
+            <dw:input-variable doc:sample="sample_data\json_26.json" mimeType="application/json" variableName="userReq"/>
+            <dw:input-variable doc:sample="C:\Users\m1005645\Desktop\mobiledevice\searches.json" mimeType="application/json" variableName="searches"/>
+            <dw:input-variable doc:sample="C:\Users\m1005645\Desktop\mobiledevice\pnrs.json" mimeType="application/json" variableName="pnrs"/>
+            <dw:input-variable doc:sample="sample_data\json_28.json" variableName="ffpIds"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+
+%function getffpIds() payload.customerDeviceId.ffpIds
+
+%function getffpIdUserReq() flowVars.userReq.updateInfo.ffpId
+
+%function getpnrUserReq() flowVars.userReq.updateInfo.pnr
+
+%function createNewffpId() ffpid:{
+      
+      "lastActive": flowVars.userReq.updateInfo.lastActive,
+      "ffpId": flowVars.userReq.updateInfo.ffpId,
+      "pnrs": [
+        {
+          "pnr": flowVars.userReq.updateInfo.pnr
+        }
+      ],
+      "searches" : flowVars.userReq.updateInfo.search
+      
+}
+
+%function checkffpIdExists() payload.customerDeviceId.ffpIds.ffpId contains  getffpIdUserReq()
+%function addNewffpId() payload.customerDeviceId.ffpIds ++ createNewffpId()
+
+%function getExistingFFPID() payload.customerDeviceId.ffpIds filter $.ffpId == flowVars.userReq.updateInfo.ffpId
+
+%function addPNRandSearchToExistingFFPID () ffpId:{
+      
+      "lastActive": flowVars.userReq.updateInfo.lastActive,
+      "ffpId": flowVars.userReq.updateInfo.ffpId,
+             
+     ( "pnrs": ((getExistingFFPID().pnrs[0] when getExistingFFPID().pnrs[0] != null otherwise []) + (pnr: getUserPNR()) when getUserPNR() != null  ) - {} distinctBy $.pnr )   when getExistingFFPID().pnrs[0] != null or getUserPNR() != null ,
+      
+     // ("searches" : ((getExistingFFPID().searches[0]) when getExistingFFPID().searches[0] != null otherwise []  +  test:getUserSearch() when $ != null otherwise [] ) ) when ( getExistingFFPID().searches[0]  != null  or getUserSearch() )
+      (searches: ( (getExistingFFPID().searches[0] when getExistingFFPID().searches[0] != null otherwise []) +  (flowVars.userReq.updateInfo.search) ) - null ) when (getExistingFFPID().searches[0] != null or flowVars.userReq.updateInfo.search != null)
+      
+      
+}
+
+%function getPNRS() getExistingFFPID().pnrs[0]
+
+%function getUserPNR() flowVars.userReq.updateInfo.pnr when flowVars.userReq.updateInfo.pnr != null otherwise null      
+
+%function removeFFPId() getffpIds() - (getffpIds() filter $.ffpId == flowVars.userReq.updateInfo.ffpId)[0] + addPNRandSearchToExistingFFPID ().ffpId
+
+%function addSearch()   (getExistingFFPID().searches) when getExistingFFPID().searches != null otherwise []  ++   getUserSearch() when $ != null otherwise [] 
+
+%function getUserSearch() flowVars.userReq.updateInfo.search when flowVars.userReq.updateInfo.search != null otherwise null
+---
+{  
+      
+      
+    (test: ( (getExistingFFPID().searches[0] when getExistingFFPID().searches[0] != null otherwise []) +  (flowVars.userReq.updateInfo.search) ) - null ) when (getExistingFFPID().searches[0] != null or flowVars.userReq.updateInfo.search != null),
+      
+            customerDeviceId: {
+                  
+            currentUser: payload.customerDeviceId.currentUser when payload.customerDeviceId.currentUser != 'GUEST' and flowVars.ffpId ==null  otherwise flowVars.ffpId,
+            customerId: flowVars.userReq.updateInfo.customerId,
+            deviceToken: flowVars.userReq.updateInfo.deviceToken when flowVars.userReq.updateInfo.deviceToken !=null otherwise payload.customerDeviceId.deviceToken,
+            ffpIds:removeFFPId() when checkffpIdExists()  otherwise addNewffpId(),
+            latt: flowVars.userReq.updateInfo.latt when flowVars.userReq.updateInfo.latt !=null otherwise payload.customerDeviceId.latt,
+            locale: flowVars.userReq.updateInfo.locale when flowVars.userReq.updateInfo.locale !=null otherwise payload.customerDeviceId.locale,
+            (location: flowVars.locations.location) when (flowVars.locations != [] or flowVars.locations != {}),
+            long: flowVars.userReq.updateInfo.long when flowVars.userReq.updateInfo.long !=null otherwise payload.customerDeviceId.long,
+            notify: {
+                  offers: flowVars.userReq.updateInfo.notify.offers as :boolean when (flowVars.userReq.updateInfo.notify.offers ) !=null otherwise payload.customerDeviceId.notify.offers,
+                  fltStats: flowVars.userReq.updateInfo.notify.fltStats as :boolean when (flowVars.userReq.updateInfo.notify.fltStats ) !=null otherwise payload.customerDeviceId.notify.fltStats
+            },
+            tier:flowVars.userReq.updateInfo.tier when flowVars.userReq.updateInfo.tier !=null otherwise payload.customerDeviceId.tier,
+            tmz: flowVars.userReq.updateInfo.tmz when flowVars.userReq.updateInfo.tmz !=null otherwise payload.customerDeviceId.tmz,
+            type:flowVars.userReq.updateInfo.type  when flowVars.userReq.updateInfo.type !=null otherwise payload.customerDeviceId.type,
+            version: flowVars.userReq.version when flowVars.userReq.version !=null otherwise payload.customerDeviceId.version
+      }
+}
+
+
+
+
+
+
+
+
+
+
+]]></dw:set-payload>
+<dw:set-variable variableName="ffpIds"><![CDATA[%dw 1.0
+%output application/java
+%var ffpList=payload.customerDeviceId.ffpIds.ffpId when payload.customerDeviceId.ffpIds.ffpId != [] otherwise null
+%var ffpId=flowVars.userReq.updateInfo.ffpId when flowVars.userReq.updateInfo.ffpId != [] otherwise null
+---
+(flatten [ffpList,ffpId] distinctBy $) - null]]></dw:set-variable>
+                    <dw:set-variable variableName="pnrs"><![CDATA[%dw 1.0
+%output application/java
+%var pnrList=payload.customerDeviceId.pnrs when payload.customerDeviceId.pnrs != [] otherwise null
+%var pnr=flowVars.userReq.updateInfo.pnr when flowVars.userReq.updateInfo.pnr != [] otherwise null
+---
+(flatten [pnrList,pnr] distinctBy $) - null]]></dw:set-variable>
+<dw:set-variable variableName="searches"><![CDATA[%dw 1.0
+%output application/java
+%var searchList=payload.customerDeviceId.guest.searches when payload.customerDeviceId.guest.searches != [] otherwise null
+%var search=flowVars.userReq.updateInfo.search when flowVars.userReq.updateInfo.search != null otherwise null
+---
+(flatten [searchList,search] distinctBy $) - null]]></dw:set-variable>
+            <dw:set-variable variableName="backup"><![CDATA[%dw 1.0
+%output application/json
+---
+{  
+		customerDeviceId: {
+		currentUser: payload.customerDeviceId.currentUser when payload.customerDeviceId.currentUser != 'GUEST' and flowVars.ffpId ==null  otherwise flowVars.ffpId,
+		customerId: flowVars.userReq.updateInfo.customerId,
+		deviceToken: flowVars.userReq.updateInfo.deviceToken when flowVars.userReq.updateInfo.deviceToken !=null otherwise payload.customerDeviceId.deviceToken,
+		ffpIds:(flowVars.ffpIds map {
+			 ffpId: $,
+			 lastActive: flowVars.userReq.updateInfo.lastActive,
+			 (pnrs: flowVars.pnrs map {
+				pnr: $[0].pnr
+			} )when (flowVars.pnrs != [] or (sizeOf flowVars.pnrs) >0),
+			(searches: flowVars.searches map ((search , indexOfSearch) -> {
+				org: search.org,
+				dest: search.dest,
+				type: search.type,
+				sdate: search.sdate,
+				edate: search.edate,
+				adt:search.adt,
+				chd:search.chd,
+				inf:search.inf
+		})) when (flowVars.searches != [] or (sizeOf flowVars.searches) >0) and (flowVars.searches filter $.org != null) !=[]})
+		++
+		guest:{ffpId:"GUEST",
+			lastActive: flowVars.userReq.updateInfo.lastActive,
+			(pnrs: flowVars.pnrs map {
+				pnr: $[0].pnr
+			} )when (flowVars.pnrs != [] or (sizeOf flowVars.pnrs) >0),
+			(searches: flowVars.searches map ((search , indexOfSearch) -> {
+				org: search.org,
+				dest: search.dest,
+				type: search.type,
+				sdate: search.sdate,
+				edate: search.edate,
+				adt:search.adt,
+				chd:search.chd,
+				inf:search.inf
+		})) when (flowVars.searches != [] or (sizeOf flowVars.searches) >0) and (flowVars.searches filter $.org != null) !=[]},
+		latt: flowVars.userReq.updateInfo.latt when flowVars.userReq.updateInfo.latt !=null otherwise payload.customerDeviceId.latt,
+		locale: flowVars.userReq.updateInfo.locale when flowVars.userReq.updateInfo.locale !=null otherwise payload.customerDeviceId.locale,
+		(location: flowVars.locations.location) when (flowVars.locations != [] or flowVars.locations != {}),
+		long: flowVars.userReq.updateInfo.long when flowVars.userReq.updateInfo.long !=null otherwise payload.customerDeviceId.long,
+		notify: {
+			offers: flowVars.userReq.updateInfo.notify.offers as :boolean when (flowVars.userReq.updateInfo.notify.offers ) !=null otherwise payload.customerDeviceId.notify.offers,
+			fltStats: flowVars.userReq.updateInfo.notify.fltStats as :boolean when (flowVars.userReq.updateInfo.notify.fltStats ) !=null otherwise payload.customerDeviceId.notify.fltStats
+		},
+		tier:flowVars.userReq.updateInfo.tier when flowVars.userReq.updateInfo.tier !=null otherwise payload.customerDeviceId.tier,
+		tmz: flowVars.userReq.updateInfo.tmz when flowVars.userReq.updateInfo.tmz !=null otherwise payload.customerDeviceId.tmz,
+		type:flowVars.userReq.updateInfo.type  when flowVars.userReq.updateInfo.type !=null otherwise payload.customerDeviceId.type,
+		version: flowVars.userReq.version when flowVars.userReq.version !=null otherwise payload.customerDeviceId.version
+	}
+} ]]></dw:set-variable> 
+        </dw:transform-message>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:input-payload doc:sample="sample_data\json_29.json"/>
+            <dw:input-variable doc:sample="C:\Users\m1005645\Desktop\mobiledevice\userreq.json" variableName="userReq"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	customerDeviceId: {
+		appId: flowVars.userReq.register.appId when flowVars.userReq.register.appId != null otherwise payload.customerDeviceId.appId,
+		currentUser: "GUEST" when flowVars.ffpId ==null otherwise flowVars.ffpId,
+		customerId: flowVars.userReq.register.customerId,
+		deviceToken: flowVars.userReq.register.deviceToken,
+		ffpIds: ((payload.customerDeviceId.ffpIds) when payload.customerDeviceId.ffpIds != null otherwise []) +
+			
+			[{
+			lastActive: now,
+			ffpId: flowVars.userReq.register.ffpId,
+			(pnrs: {pnr:flowVars.userReq.register.pnr}) when flowVars.userReq.register.pnr != null,
+			(searches: flowVars.userReq.register.search) when flowVars.userReq.register.search != null
+					}]  ,								
+		
+		latt: flowVars.userReq.register.latt when flowVars.userReq.register.latt != null otherwise payload.customerDeviceId.latt,
+		locale: flowVars.userReq.register.locale when flowVars.userReq.register.locale != null otherwise payload.customerDeviceId.locale,
+		(location: flowVars.locations.location) when (flowVars.locations != [] or flowVars.locations != {}) ,
+		long: flowVars.userReq.register.long when flowVars.userReq.register.long != null otherwise payload.customerDeviceId.long,
+		notify: {
+			offers: flowVars.userReq.register.notify.offers when flowVars.userReq.register.notify.offers != null otherwise payload.customerDeviceId.notify.offers,
+			fltStats: flowVars.userReq.register.notify.fltStats when flowVars.userReq.register.notify.fltStats != null otherwise payload.customerDeviceId.notify.fltStats
+		},
+		tier:flowVars.userReq.register.tier when flowVars.userReq.register.tier !=null otherwise payload.customerDeviceId.tier,
+		tmz: flowVars.userReq.register.tmz when flowVars.userReq.register.tmz != null otherwise payload.customerDeviceId.tmz,
+		type: flowVars.userReq.register.type when  flowVars.userReq.register.type !=null otherwise payload.customerDeviceId.type,
+		version: flowVars.userReq.register.version when flowVars.userReq.register.version != null otherwise payload.customerDeviceId.version
+	}
+} ]]></dw:set-payload>
+        </dw:transform-message>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:input-payload doc:sample="sample_data\json_30.json"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	test: true when payload contains "1" otherwise false
+}]]></dw:set-payload>
+        </dw:transform-message>
+        <dw:transform-message doc:name="Transform Message" metadata:id="8ae72f40-3ff7-41c7-bffd-944e4ec25c6d">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/xml
+%namespace ns0 http://www.emirates.com/pss/integration/xmlschemas/flightcustomerlist-rs/v1.0/2017/10
+---
+{
+	ns0#flightCustomerListResponse: {
+		ns0#customerDetailList: {
+			ns0#customerDetail: {
+				ns0#paxOrder: null,
+				ns0#passengerName: null,
+				ns0#destination: null,
+				ns0#cabinClass: null,
+				ns0#passengerStatus: null,
+				ns0#groupCode: null,
+				ns0#paxReferenceNumber: null,
+				ns0#seatNumber: null,
+				ns0#gender: null,
+				ns0#baggageDetail: {
+					ns0#piece: null,
+					ns0#weight: null,
+					ns0#pooledDetails: null
+				},
+				ns0#agentSinein: null,
+				ns0#checkinDateTime: null,
+				ns0#loyaltyDetail: {
+					ns0#tier: null
+				},
+				ns0#ssrCodes: null,
+				ns0#priority: null,
+				ns0#doj: null,
+				ns0#fareBrand: null
+			}
+		}
+	}
+}]]></dw:set-payload>
+        </dw:transform-message>
+        <dw:transform-message doc:name="Transform Message" metadata:id="7918c1e9-82c5-4f65-90f5-519ba8dd1edc">
+            <dw:input-payload/>
+            <dw:input-variable doc:sample="D:\ProjectRelatedWork\paxJOurneyID.json" mimeType="application/json" variableName="paxJourneyId"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/xml
+%namespace xsi http://www.w3.org/2001/XMLSchema-instance
+---
+{
+	"com.emirates.helix.customerdata.res.CustomerDataResponseWSTO": {
+		displayCustomerTravel: {
+			passengerDetails: {
+				requestedPassengerDetails: {
+					"com.emirates.helix.customerdata.res.RequestedPassengerDetailsWSTO": {
+						pnrNumber: flowVars.paxJourneyId.pnr when flowVars.paxJourneyId.pnr != null otherwise "",
+						pnrCreateDate: null,
+						customerID: null,
+						passengerInformation: {
+							passengerName: {
+								fullName: flowVars.paxJourneyId.pax.fName,
+								namePrefix: flowVars.paxJourneyId.pax.lName,
+								givenName: null,
+								familyName: null
+							},
+							personalInfo: {
+								gender: null
+							}
+						},
+						segmentDetails: {
+							presentSegment: {
+								flightDetails: {
+									carrierCode: flowVars.paxJourneyId.flight.carrier,
+									flightNumber: flowVars.paxJourneyId.flight.fltNum as :number
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}]]></dw:set-payload>
+        </dw:transform-message>
+    </flow>
+    <flow name="testingFlow2">
+        <poll doc:name="Poll">
+            <dw:transform-message doc:name="Transform Message">
+                <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345,
+	test:12345
+}]]></dw:set-payload>
+            </dw:transform-message>
+        </poll>
+        <batch:execute name="testingBatch" doc:name="Batch Execute"/>
+    </flow>
+    <batch:job name="testingBatch">
+        <batch:process-records>
+            <batch:step name="Batch_Step">
+                <batch:commit size="10" doc:name="Batch Commit">
+                    <json:object-to-json-transformer doc:name="Object to JSON"/>
+                    <http:request config-ref="HTTP_Request_Configuration" path="/testing" method="POST" doc:name="HTTP"/>
+                </batch:commit>
+            </batch:step>
+        </batch:process-records>
+    </batch:job>
+    <flow name="testingFlow3">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/testing" doc:name="HTTP"/>
+        <logger message="order processed" level="INFO" doc:name="Logger"/>
+    </flow>
+</mule>

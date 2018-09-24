@@ -1,0 +1,446 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
+    <file:connector name="File" outputPattern="test.csv" readFromDirectory="D:\" autoDelete="false" streaming="true" validateConnections="true" doc:name="File"/>
+
+ <flow name="addssrFlow1" initialState="stopped">
+        <poll doc:name="Poll">
+            <fixed-frequency-scheduler frequency="30" timeUnit="SECONDS"/>
+           
+                <logger message="printing paylaod" level="INFO" doc:name="Logger"/>
+            
+        </poll>
+        <set-payload value="#[org.mule.transport.NullPayload.getInstance()]" doc:name="Set Payload"/>
+        <logger message="#[message.payload == empty]  :::::::::::::::::::::::   #[(message.payload  is org.mule.transport.NullPayload)]" level="INFO" doc:name="Logger"/>
+        <dw:transform-message doc:name="Transform Message" metadata:id="15ccc093-ff5e-4729-8761-e865b24284c8">
+            <dw:input-payload doc:sample="sample_data\string.dwl" mimeType="application/java"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+payload when payload != null otherwise "Test"]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[message.payloadAs(java.lang.String)]" level="INFO" doc:name="Logger"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:input-payload doc:sample="sample_data\empty.xml"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+%function getStatus (status) ("FLIGHT_CANCELLATION" when status == "Canceled" otherwise ( "FLIGHT_DELAY" when status == "Estimated" otherwise ( "FLIGHT_SCHEDULED" when status == "Scheduled" otherwise status) ))
+%function getDelayCodes() (payload.data.*DEPARTURE_DELAY_CODES)
+---
+{
+      test: getDelayCodes(),
+      fltNum: payload.data.FLIGHT_NUMBER as :string,
+      depAirport: payload.data.FROM_AIRPORT,
+      depAirportName: payload.data.FROM_AIRPORT_NAME,
+      arrAirport: payload.data.TO_AIRPORT,
+      arrAirportName: payload.data.TO_AIRPORT_NAME,
+      status: getStatus(payload.data.FLIGHT_STATUS),
+      (delayInfos: (getDelayCodes() map ((dc, index) -> {
+            code: payload.data.*DEPARTURE_DELAY_CODES[index] as :number,
+            desc: payload.data.*DEPARTURE_DELAY_DESCRIPTION[index]
+      }))) when (sizeOf getDelayCodes()) > 0,
+      (duration: payload.data.DURATION as :number) when payload.data.DURATION != "",
+      (scdDepDate: payload.data.SCHEDULED_DEPARTURE_DATE as :string) when payload.data.SCHEDULED_DEPARTURE_DATE != "",
+      (scdDepTime: payload.data.SCHEDULED_DEPARTURE_TIME as :string) when payload.data.SCHEDULED_DEPARTURE_TIME != "",
+      (scdArrDate: payload.data.SCHEDULED_ARRIVAL_DATE as :string) when payload.data.SCHEDULED_ARRIVAL_DATE != "",
+      (scdArrTime: payload.data.SCHEDULED_ARRIVAL_TIME as :string) when payload.data.SCHEDULED_ARRIVAL_TIME != "",
+      (estDepDate: payload.data.ESTIMATED_DEPARTURE_DATE) when payload.data.ESTIMATED_DEPARTURE_DATE != "",
+      (estDepTime: payload.data.ESTIMATED_DEPARTURE_TIME) when payload.data.ESTIMATED_DEPARTURE_TIME != "",
+      (estArrDate: payload.data.ESTIMATED_ARRIVAL_DATE) when payload.data.ESTIMATED_ARRIVAL_DATE != "",
+      (estArrTime: payload.data.ESTIMATED_ARRIVAL_TIME) when payload.data.ESTIMATED_ARRIVAL_TIME != "",
+      (actDepDate: payload.data.ACTUAL_DEPARTURE_DATE) when payload.data.ACTUAL_DEPARTURE_DATE != "",
+      (actDepTime: payload.data.ACTUAL_DEPARTURE_TIME) when payload.data.ACTUAL_DEPARTURE_TIME != "",
+      (actArrDate: payload.data.ACTUAL_ARRIVAL_DATE as :string) when payload.data.ACTUAL_ARRIVAL_DATE != "",
+      (actArrTime: payload.data.ACTUAL_ARRIVAL_TIME) when payload.data.ACTUAL_ARRIVAL_TIME != ""
+}
+]]></dw:set-payload>
+        </dw:transform-message>
+    </flow>
+    <flow name="testfilecopyusingjavaFlow" initialState="stopped">
+        <poll doc:name="Poll">
+            <fixed-frequency-scheduler frequency="1" timeUnit="MINUTES"/>
+            <logger message="testing for" level="INFO" doc:name="Logger"/>
+        </poll>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+
+%var test= [
+  {
+    "test": [
+      {
+        "paxId": 78816368,
+        "serviceCode": "CIP",
+        "action": 1
+      },
+      {
+        "paxId": 78816368,
+        "serviceCode": "CIT",
+        "action": 1
+      },
+      {
+        "paxId": 78816369,
+        "serviceCode": "CIP",
+        "action": 1
+      },
+      {
+        "paxId": 78816369,
+        "serviceCode": "CIM",
+        "action": 1
+      }
+    ]
+  },
+  {
+    "test": [
+      {
+        "paxId": 78816368,
+        "serviceCode": "WCOB",
+        "action": 0
+      },
+      {
+        "paxId": 78816368,
+        "serviceCode": "WCOA",
+        "action": 0
+      },
+      {
+        "paxId": 78816369,
+        "serviceCode": "WCOB",
+        "action": 0
+      },
+      {
+        "paxId": 78816369,
+        "serviceCode": "WCOU",
+        "action": 0
+      }
+    ]
+  }
+]
+---
+ {
+
+	"fareBrand": null,
+	"servicesToAdd": [{
+		"resPaxID": 78816368,
+		"serviceReferences": [{
+			"serviceCode": "WCOB"
+		},
+		{
+			"serviceCode": "CIP"
+		}]
+	}],
+	"servicesToRemove": [{
+		"resPaxID": 78816368,
+		"serviceReferences": [{
+			"serviceCode": "LRPT"
+		},
+		{
+			"serviceCode": "RRPT"
+		}]
+	}],
+	"pnrNum": "FDZPOY",
+	"securityToken": "456789token"
+}]]></dw:set-payload>
+        </dw:transform-message>
+        <foreach collection="#[message.payload]" doc:name="For Each">
+            <logger message="Printing payload :::::::::::::::: #[message.payload]" level="INFO" doc:name="Logger"/>
+            <dw:transform-message doc:name="Transform Message">
+                <dw:input-payload doc:sample="sample_data\json.json"/>
+                <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+test:payload.test.action[0],
+test1: payload.test.paxId distinctBy $
+
+}]]></dw:set-payload>
+            </dw:transform-message>
+            <logger message="#[message.payloadAs(java.lang.String)]" level="INFO" doc:name="Logger"/>
+            <dw:transform-message doc:name="Transform Message" metadata:id="67b105ad-1eca-41bd-81b5-d31ac2b83bf3">
+                <dw:input-payload doc:sample="D:\test.csv" mimeType="application/csv"/>
+                <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+%var date = payload[0].departure_date   as :date {format: "yyyy-MM-dd"} 
+---
+{
+date: date	as :date
+}
+]]></dw:set-payload>
+            </dw:transform-message>
+        </foreach>
+    </flow>
+    <flow name="testfilecopyusingjavaFlow1" initialState="stopped">
+        <file:inbound-endpoint path="D:\logs" responseTimeout="10000" doc:name="File">
+            <file:filename-regex-filter pattern="csv" caseSensitive="false"/>
+        </file:inbound-endpoint>
+        <file:file-to-string-transformer doc:name="File to String"/>
+        <logger message="#[message.payloadAs(java.lang.String)]" level="INFO" doc:name="Logger"/>
+        <logger message="#[message.payloadAs(java.lang.String)]" level="INFO" doc:name="Logger"/>
+    </flow>
+    <flow name="testfilecopyusingjavaFlow2" initialState="stopped">
+        <poll doc:name="Poll">
+            <logger message="Trying to print a request" level="INFO" doc:name="Logger"/>
+        </poll>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+  "systemId": "myIdTravel",
+  "entityId": "YIOY7",
+  "paymentId": "46227",
+  "currency": "AED",
+  "amount": "655.0",
+  "requestType": "TRAVEL",
+  "sessionId": "aftjrttpeq",
+  "cardDetails": {
+    "cardType": "MSCD",
+    "cardNumber": "5453010000100560",
+    "cardExpiry": "2107",
+    "cardSecurityCode": "123"
+  },
+  "billTo": {
+    "firstName": "noreal",
+    "lastName": "name",
+    "street": "1295 Charleston Rd",
+    "city": "Mountain View",
+    "state": "CA",
+    "postalCode": "94043",
+    "country": "US",
+    "emailId": "alessandro.muffolini@emirates.com"
+  },
+  "items": [
+    {
+      "unitPrice": "655.0",
+      "quantity": "1",
+      "productCode": "Service",
+      "productName": "Airline Reservation",
+      "productSKU": "DXB-GYD:GYD-DXB",
+      "firstName": "ALESSANDRO",
+      "lastName": "MUFFOLINI",
+      "userID": "1",
+      "status": "Reserved",
+      "userType": "Adult",
+      "userEmail": "alessandro.muffolini@emirates.com",
+      "userPhone": "+971558994226"
+    }
+  ],
+  "travelDetails": {
+    "departureDate": "2018-01-28",
+    "departureTime": "08:00",
+    "gmtVariation": "+04:00",
+    "bookingChannel": "WEB",
+    "completeRoute": "DXB-GYD:GYD-DXB",
+    "journeyType": "Return",
+    "carrierCode": "FZ",
+    "flightNumber": "FZ 709",
+    "fareBasisCode": "YIDZL3R2",
+    "passengerCount": 1,
+    "legs": [
+     {
+        "origin": "DXB",
+        "destination": "GYD",
+        "id": 0
+      },
+      {
+        "origin": "GYD",
+        "destination": "DXB",
+        "id": 1
+      }
+    ]
+  }
+}]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="Payload afetr transformation :::::::::::::::::::::: #[message.payloadAs(java.lang.String)]" level="INFO" doc:name="Logger"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:input-payload doc:sample="sample_data\json_1.json"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+	//payload:payload,
+	from:payload.email.from,
+	replyto:payload.email.replyTo joinBy ",",
+	subject:payload.email.subject,
+	body:payload.email.text when (payload.email.text != null and (sizeOf payload.email.text) > 0) otherwise payload.email.html,
+	to:payload.email.recipients.to.*email joinBy ",",
+	cc:payload.email.recipients.cc joinBy ",",
+	bcc:payload.email.recipients.bcc joinBy ","
+	
+}]]></dw:set-payload>
+        </dw:transform-message>
+    </flow>
+    <flow name="testfilecopyusingjavaFlow3">
+        <dw:transform-message doc:name="Transform Message">
+            <dw:input-payload doc:sample="sample_data\json_2.json"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/xml
+
+---
+order: {(
+	
+	payload map  item : {
+	
+	itemName:$.item
+	
+	
+}
+)}
+]]></dw:set-payload>
+        </dw:transform-message>
+        <dw:transform-message doc:name="Transform Message" metadata:id="37e09ead-6efc-426c-a21e-a310764dd3fa">
+            <dw:input-payload doc:sample="sample_data\json_6.json"/>
+            <dw:input-variable doc:sample="sample_data\json_4.json" variableName="pnrs"/>
+            <dw:input-variable doc:sample="sample_data\json_5.json" variableName="searches"/>
+            <dw:input-variable doc:sample="sample_data\string_1.dwl" mimeType="application/java" variableName="ffpId"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json skipNullOn="everywhere"
+---
+{
+	
+	test:flowVars.searches,
+	
+      customerDeviceId: {
+      	
+      	ffpids: 
+      	
+  		(test:
+  			{
+  			ffpid: payload.ffpId,
+              lastActive: now
+      		
+      	}) ++
+      	
+      	(test: 
+      		{
+      			ffpid: payload.ffpId,
+                  lastActive: now
+      	}  ) 
+         
+      }
+}
+]]></dw:set-payload>
+        </dw:transform-message>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:input-payload doc:sample="sample_data\json_7.json"/>
+            <dw:input-variable doc:sample="sample_data\string_2.dwl" variableName="ffpId"/>
+            <dw:input-variable doc:sample="sample_data\json_8.json" variableName="pnrs"/>
+            <dw:input-variable doc:sample="sample_data\json_9.json" variableName="searches"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+%function ffpid() ffpids1:
+      	
+  		(test:
+  			{
+  			ffpid: payload.ffpId,
+            lastActive: now,
+           
+            
+            (pnrs: flowVars.pnrs map {
+                        pnr: $                        
+                  }) when (flowVars.pnrs != null and (sizeOf flowVars.pnrs)>0),
+                 
+              (searches: flowVars.searches map ((search , indexOfSearch) -> {
+                    org: search.org,
+                    dest: search.dest,
+                    type: search.type,
+                    sdate: search.sdate,
+                    edate: search.edate,
+                    adt:search.adt,
+                    chd:search.chd,
+                    inf:search.inf
+        })) when (flowVars.searches != null and (sizeOf flowVars.searches) >0)
+        
+        
+       
+      		
+      	} ) ++
+      	
+      	(test: 
+      		{
+      			ffpid: "GUEST",
+                lastActive: now,
+                (pnrs: flowVars.pnrs map {
+                        pnr: $                        
+                  }) when (flowVars.pnrs != null and (sizeOf flowVars.pnrs)>0),
+                 
+                  (searches: flowVars.searches map ((search , indexOfSearch) -> {
+                        org: search.org,
+                        dest: search.dest,
+                        type: search.type,
+                        sdate: search.sdate,
+                        edate: search.edate,
+                        adt:search.adt,
+                        chd:search.chd,
+                        inf:search.inf
+            })) when (flowVars.searches != null and (sizeOf flowVars.searches) >0)
+                
+      	}  when flowVars.ffpId == null otherwise null ) 
+
+---
+{
+	
+	
+	
+customerDeviceId: {
+      	
+      	ffpids12345: ffpid().ffpids1.*test	filter $ != null	
+         
+      }
+      
+      }
+]]></dw:set-payload>
+        </dw:transform-message>
+    </flow>
+    <flow name="testfilecopyusingjavaFlow4" initialState="stopped">
+        <poll doc:name="Poll">
+            <fixed-frequency-scheduler frequency="1" timeUnit="MINUTES"/>
+            <logger message="polling started" level="INFO" doc:name="Logger"/>
+        </poll>
+        <set-variable variableName="paxJourneyList" value="#[[]]" doc:name="Variable"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+[1,2,3,4]]]></dw:set-payload>
+        </dw:transform-message>
+        <foreach collection="#[message.payload]" doc:name="For Each">
+            <dw:transform-message doc:name="Transform Message">
+                <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+
+test:{
+	name:"deepthi" ++ payload,
+	age:35 + payload as :number
+}
+]]></dw:set-payload>
+            </dw:transform-message>
+            <json:json-to-object-transformer doc:name="JSON to Object"/>
+            <expression-component doc:name="Expression"><![CDATA[#[flowVars.paxJourneyList.add(payload)]]]></expression-component>
+            <logger message="Inside for Loop ########### #[flowVars.paxJourneyList]" level="INFO" doc:name="Logger"/>
+        </foreach>
+        <logger message="After For each :::::::::::::: #[flowVars.paxJourneyList]" level="INFO" doc:name="Logger"/>
+        <set-variable variableName="paxJourneyList" value="#[flowVars.paxJourneyList]" encoding="UTF-8" mimeType="application/json" doc:name="Variable"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+flowVars.paxJourneyList map {
+	test:$.test.name
+}]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[message.payloadAs(java.lang.String)]" level="INFO" doc:name="Logger"/>
+    </flow>
+
+
+
+</mule>
